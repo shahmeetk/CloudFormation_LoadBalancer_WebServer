@@ -1,0 +1,97 @@
+Description: AWS ELB CloudFormation Template
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair.	
+  SSHSecurityGroup:
+    Description: SSH Authentication Group.
+    Type: AWS::EC2::SecurityGroup::GroupName
+    ConstraintDescription: Please select any one Security Group.
+
+  Instance:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.nano
+    ConstraintDescription: Please select any one Instance Type.  
+   
+  EC2ImageId:
+    Description: EC2 ImageId
+    Type: String
+    Default: ami-bf4193c7
+    AllowedValues:
+      - ami-bf4193c7
+      - ami-dd4496a5
+      - ami-da4694a2
+      - ami-594a9821
+    ConstraintDescription: Please select any one ImageId.
+   
+  AZLocation:
+    Description: Availability Zone
+    Type: String
+    Default: us-west-2a
+    AllowedValues:
+      - us-west-2a
+      - us-west-2b
+      - us-west-2c
+    ConstraintDescription: Please select any one Availability Zone.
+
+Resources:
+  ElasticLoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      AvailabilityZone: !Ref AZLocation
+      CrossZone: 'true'
+      Listners:
+      - LoadBalancerPort: '80'
+        InstancePort: '5000'
+        Protocol: HTTP
+      HealthCheck:
+        Target: HTTP:80/
+        HealthyThreshold: '3'
+        UnhealthyThreshold: '5'
+        Interval: '30'
+        Timeout: '5'
+      ConnectionDrainingPolicy:
+        Enabled: 'true'
+        Timeout: '300'
+  WebServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AZLocation
+      ImageId: !Ref EC2ImageId
+      KeyName: !Ref KeyName
+      InstanceType: !Ref Instance
+      SecurityGroups:
+      - Ref: SSHSecurityGroup
+  
+  DatabaseServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AZLocation
+      ImageId: !Ref EC2ImageId
+      KeyName: !Ref KeyName
+      InstanceType: !Ref Instance
+      SecurityGroups:
+      - Ref: SSHSecurityGroup
+
+Outputs:
+  InstanceId:
+    Description: Instance Id of Web Server
+    Value:  !Ref WebServer
+    
+    Description: Instance Id of DatabaseServer
+    Value: !Ref DatabaseServer
+  
+  PublicIP:
+    Description: Public IP address of Web Server
+    Value: 
+      !GetAtt WebServer.PublicIp
+      
+    Description: Public IP address of Database Server
+    Value:
+      !GetAtt DatabaseServer.PublicIp
